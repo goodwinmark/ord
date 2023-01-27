@@ -133,6 +133,8 @@ impl Server {
         thread::sleep(Duration::from_millis(5000));
       });
 
+      let config = options.load_config()?;
+
       let router = Router::new()
         .route("/", get(Self::home))
         .route("/block-count", get(Self::block_count))
@@ -161,6 +163,7 @@ impl Server {
         .route("/tx/:txid", get(Self::transaction))
         .layer(Extension(index))
         .layer(Extension(options.chain()))
+        .layer(Extension(Arc::new(config)))
         .layer(SetResponseHeaderLayer::if_not_present(
           header::CONTENT_SECURITY_POLICY,
           HeaderValue::from_static("default-src 'self'"),
@@ -705,8 +708,13 @@ impl Server {
 
   async fn content(
     Extension(index): Extension<Arc<Index>>,
+    Extension(config): Extension<Arc<Config>>,
     Path(inscription_id): Path<InscriptionId>,
   ) -> ServerResult<Response> {
+    if config.hidden(inscription_id) {
+      return Ok(PreviewUnknownHtml.into_response());
+    }
+
     let inscription = index
       .get_inscription_by_id(inscription_id)?
       .ok_or_not_found(|| format!("inscription {inscription_id}"))?;
@@ -743,8 +751,13 @@ impl Server {
 
   async fn preview(
     Extension(index): Extension<Arc<Index>>,
+    Extension(config): Extension<Arc<Config>>,
     Path(inscription_id): Path<InscriptionId>,
   ) -> ServerResult<Response> {
+    if config.hidden(inscription_id) {
+      return Ok(PreviewUnknownHtml.into_response());
+    }
+
     let inscription = index
       .get_inscription_by_id(inscription_id)?
       .ok_or_not_found(|| format!("inscription {inscription_id}"))?;

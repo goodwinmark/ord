@@ -111,6 +111,19 @@ impl Options {
     Ok(self.chain().join_with_data_dir(&base))
   }
 
+  pub(crate) fn load_config(&self) -> Result<Config> {
+    let path = dirs::config_dir()
+      .ok_or_else(|| anyhow!("failed to retrieve config dir"))?
+      .join("ord")
+      .join("config.yaml");
+
+    if !path.is_file() {
+      Ok(Default::default())
+    } else {
+      Ok(serde_yaml::from_reader(File::open(path)?)?)
+    }
+  }
+
   fn format_bitcoin_core_version(version: usize) -> String {
     format!(
       "{}.{}.{}",
